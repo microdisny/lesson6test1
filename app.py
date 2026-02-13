@@ -13,16 +13,31 @@ def app(environ, start_response):
             size = int(environ.get("CONTENT_LENGTH", 0))
             body = environ["wsgi.input"].read(size).decode("utf-8")
             params = parse_qs(body)
-            height = float(params.get("height", ["0"])[0])
-            weight = float(params.get("weight", ["0"])[0])
 
-            # --- 追加：0以下はエラー ---
-            if height <= 0 or weight <= 0:
-                raise ValueError("身長と体重は正の数を入力してください。")
+            # --- 数値チェック（追加済み） ---
+            height_str = params.get("height", [""])[0]
+            weight_str = params.get("weight", [""])[0]
+
+            # 数値以外の入力を禁止
+            if not height_str.replace('.', '', 1).isdigit():
+                raise ValueError("身長は数字のみ入力できます。")
+
+            if not weight_str.replace('.', '', 1).isdigit():
+                raise ValueError("体重は数字のみ入力できます。")
+
+            height = float(height_str)
+            weight = float(weight_str)
+
+            # --- ★ 0 未満（マイナス）禁止チェックを追加 ---
+            if height < 0:
+                raise ValueError("身長は 0 以上の数値を入力してください。")
+
+            if weight < 0:
+                raise ValueError("体重は 0 以上の数値を入力してください。")
 
             # BMI計算（単位：身長 m）
-            h_m = height / 100
-            bmi = weight / (h_m ** 2)
+            h_m = height / 100 if height else 0
+            bmi = weight / (h_m ** 2) if h_m else 0
 
             # 評価
             if bmi < 18.5:
@@ -47,7 +62,7 @@ def app(environ, start_response):
     <html lang="ja">
       <head>
         <meta charset="utf-8">
-        <title>BMI計算機</title>
+        <title>あなたのBMIを測定してみましょう</title>
         <style>
           body {{ font-family: sans-serif; margin: 40px; background: #f9f9f9; }}
           h1 {{ background: #cde; padding: 10px; border-radius: 8px; }}
@@ -63,17 +78,25 @@ def app(environ, start_response):
         </script>
       </head>
       <body>
-        <h1>BMI計算機</h1>
+        <h1>あなたのBMIを測定してみましょう</h1>
+
+        <p>このアプリでは、身長と体重を入力するだけであなたのBMIと肥満度が判定できます。</p>
+
         <form method="post">
+
+          <!-- ★ 0 未満を入力できないよう min="0" を追加 -->
           <label>身長(cm): 
-            <input type="number" id="height" name="height" step="any" min="0.1" required>
+            <input type="number" id="height" name="height" step="any" min="0" required>
           </label><br><br>
+
           <label>体重(kg): 
-            <input type="number" id="weight" name="weight" step="any" min="0.1" required>
+            <input type="number" id="weight" name="weight" step="any" min="0" required>
           </label><br><br>
+
           <button type="submit">計算</button>
           <button type="button" onclick="clearForm()">入力をリセット</button>
         </form>
+
         <div style="margin-top:20px;">{result}</div>
       </body>
     </html>"""
